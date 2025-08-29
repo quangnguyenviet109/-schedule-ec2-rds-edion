@@ -1,96 +1,54 @@
 import boto3
 import os
-from datetime import datetime
-import pytz
+from period import is_period_active
+from instances import handle_instances_by_tag, enforce_instance_status, stop_new_instances_by_tag
 
-# AWS clients
 dynamodb = boto3.resource("dynamodb")
-ec2 = boto3.client("ec2")
-rds = boto3.client("rds")
-
-# Lấy tên bảng DynamoDB từ biến môi trường
-TABLE_NAME = os.getenv("TABLE_NAME")
+TABLE_NAME = os.environ.get("TABLE_NAME", "ec2-rds-scheduler-table")
 
 def lambda_handler(event, context):
-    # --- Quét DynamoDB để lấy toàn bộ schedule ---
+    # Lấy dữ liệu từ DynamoDB
     table = dynamodb.Table(TABLE_NAME)
-    response = table.scan()
-    items = response.get("Items", [])
+    items = table.scan()["Items"]
 
-    # Lấy giờ hiện tại (UTC)
-    now_utc = datetime.utcnow()
+    # Lọc các periods và schedules
+    periods = {i["Name"]: i for i in items if i["Type"] == "period"}
+    schedules = [i for i in items if i["Type"] == "schedule"]
 
-    for cfg in items:
-        # Ví dụ: ScheduleName = "office"
-        schedule = cfg["ScheduleName"]
+    # Xử lý từng schedule
+    for sched in schedules:
+        tz = sched.get("Timezone", "UTC")
+        period_names = [p.strip() for p in sched.get("Periods", "").split(",") if p.strip()]
 
-        # --- Tính giờ hiện tại theo Timezone lưu trong DynamoDB ---
-        tz = pytz.timezone(cfg["Timezone"])
-        now_local = now_utc.astimezone(tz)
-        current_time = now_local.strftime("%H:%M")
+        # Kiểm tra nếu bất kỳ period nào active
+        active = any(is_period_active(periods.get(p), tz) for p in period_names)
 
-        # Giờ start/stop cho EC2 và RDS
-        ec2_start = cfg.get("EC2Start")
-        ec2_stop = cfg.get("EC2Stop")
-        rds_start = cfg.get("RDSStart")
-        rds_stop = cfg.get("RDSStop")
+        # Khởi tạo biến để lưu `end_time` muộn nhất
+        latest_end_time = None
 
-        print(f"[{schedule}] Local time: {current_time}")
+        # Tìm `end_time` muộn nhất từ các period active
+        for period_name in period_names:
+            period = periods.get(period_name)
+            period_end_time = period.get("EndTime", None)
 
-        # --- Nếu giờ khớp EC2Start hoặc EC2Stop thì start/stop EC2 ---
-        if current_time == ec2_start:
-            _start_ec2(schedule)
-        elif current_time == ec2_stop:
-            _stop_ec2(schedule)
+            # So sánh để lấy `end_time` muộn nhất
+            if latest_end_time is None or (period_end_time and period_end_time > latest_end_time):
+                latest_end_time = period_end_time
 
-        # --- Nếu giờ khớp RDSStart hoặc RDSStop thì start/stop RDS ---
-        if current_time == rds_start:
-            _start_rds(schedule)
-        elif current_time == rds_stop:
-            _stop_rds(schedule)
+        # Lấy các flag từ DynamoDB
+        enforced = sched.get("Enforced", True)
+        hibernate = sched.get("Hibernate", False)
+        retain_running = sched.get("RetainRunning", False)
+        stop_new_instances = sched.get("StopNewInstances", True)  # Mặc định true
 
-    return {"statusCode": 200, "body": "Done"}
+        # Nếu enforced = true, enforce instance status
+        # Nếu enforced = true, enforce instance status
+        if enforced:
+            # Sử dụng latest_end_time từ các period active
+            enforce_instance_status(sched["Name"], active, hibernate, retain_running)
 
-
-# ====== EC2 functions ======
-def _start_ec2(schedule):
-    # Tìm EC2 có tag "Schedule=<schedule>"
-    instances = ec2.describe_instances(
-        Filters=[{"Name": "tag:Schedule", "Values": [schedule]}]
-    )
-    ids = [i["InstanceId"] for r in instances["Reservations"] for i in r["Instances"]]
-    if ids:
-        print(f"[EC2] Starting: {ids}")
-        ec2.start_instances(InstanceIds=ids)
-
-
-def _stop_ec2(schedule):
-    # Tìm EC2 có tag "Schedule=<schedule>"
-    instances = ec2.describe_instances(
-        Filters=[{"Name": "tag:Schedule", "Values": [schedule]}]
-    )
-    ids = [i["InstanceId"] for r in instances["Reservations"] for i in r["Instances"]]
-    if ids:
-        print(f"[EC2] Stopping: {ids}")
-        ec2.stop_instances(InstanceIds=ids)
-
-
-# ====== RDS functions ======
-def _start_rds(schedule):
-    dbs = rds.describe_db_instances()
-    for db in dbs["DBInstances"]:
-        # Kiểm tra RDS có tag "Schedule=<schedule>"
-        tags = rds.list_tags_for_resource(ResourceName=db["DBInstanceArn"])["TagList"]
-        if any(t["Key"] == "Schedule" and t["Value"] == schedule for t in tags):
-            print(f"[RDS] Starting: {db['DBInstanceIdentifier']}")
-            rds.start_db_instance(DBInstanceIdentifier=db["DBInstanceIdentifier"])
-
-
-def _stop_rds(schedule):
-    dbs = rds.describe_db_instances()
-    for db in dbs["DBInstances"]:
-        # Kiểm tra RDS có tag "Schedule=<schedule>"
-        tags = rds.list_tags_for_resource(ResourceName=db["DBInstanceArn"])["TagList"]
-        if any(t["Key"] == "Schedule" and t["Value"] == schedule for t in tags):
-            print(f"[RDS] Stopping: {db['DBInstanceIdentifier']}")
-            rds.stop_db_instance(DBInstanceIdentifier=db["DBInstanceIdentifier"])
+        if not enforced:
+            # Nếu không enforced thì xử lý bình thường
+            if stop_new_instances and latest_end_time:
+                stop_new_instances_by_tag(sched["Name"], hibernate, stop_new_instances, latest_end_time)
+            handle_instances_by_tag(sched["Name"], active, latest_end_time)

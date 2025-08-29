@@ -1,7 +1,7 @@
 variable "region" {
   description = "AWS region"
   type        = string
-  default     = "ap-southeast-1"
+  default     = "ap-northeast-1"
 }
 
 variable "project_name" {
@@ -10,14 +10,29 @@ variable "project_name" {
   default     = "ec2-rds-scheduler"
 }
 
-variable "office" {
-  description = "Office schedule config"
+variable "config" {
   type = object({
-    schedule_name = string
-    ec2_start     = string
-    ec2_stop      = string
-    rds_start     = string
-    rds_stop      = string
-    timezone      = string
+    # common
+    name = string
+    type = string   # "schedule" | "period"
+
+    # schedule
+    description            = optional(string)
+    hibernate              = optional(string)
+    enforced               = optional(string)
+    periods                = optional(string)
+    retain_running         = optional(string)
+    use_maintenance_window = optional(string)
+    ssm_maintenance_window = optional(string)
+    stop_new_instances     = optional(string)
+    timezone               = optional(string)
+    use_metrics            = optional(string)
+
+    # period
+    begin_time  = optional(string)
+    end_time    = optional(string)
+    months      = optional(string)
+    monthdays   = optional(string)
+    weekdays    = optional(string)
   })
 }

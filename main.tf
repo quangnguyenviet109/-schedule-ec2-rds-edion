@@ -1,7 +1,7 @@
 module "dynamodb" {
   source     = "./modules/dynamodb"
   table_name = "${var.project_name}-table"
-  office     = var.office
+  config = var.config
 }
 module "iam_role" {
   source       = "./modules/iam_role"
