@@ -46,17 +46,23 @@ def lambda_handler(event, context):
         period_names = [p.strip() for p in sched.get("Periods", "").split(",") if p.strip()]
         active = any(is_period_active(periods.get(p), tz) for p in period_names)
 
+# Lấy tất cả BeginTime và EndTime của những period active theo NGÀY hôm nay
+        begin_times_today = []
         end_times_today = []
         for pname in period_names:
             period = periods.get(pname)
             if not period:
                 continue
             if is_period_date_active_today(period, tz):
+                bt = period.get("BeginTime")
                 et = period.get("EndTime")
+                if bt:
+                    begin_times_today.append(bt)
                 if et:
                     end_times_today.append(et)
 
-        # Lấy latest_end_time (cái lớn nhất trong ngày hôm nay)
+        # Soonest begin và latest end
+        soonest_begin_time = min(begin_times_today) if begin_times_today else None
         latest_end_time = max(end_times_today) if end_times_today else None
 
         enforced = sched.get("Enforced", True)
