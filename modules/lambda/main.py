@@ -1,54 +1,78 @@
 import boto3
 import os
 from period import is_period_active
-from instances import handle_instances_by_tag, enforce_instance_status, stop_new_instances_by_tag
-
+from instances import (
+    handle_instances_by_tag,
+    enforce_instance_status,
+    collect_and_publish_all_metrics, stop_new_instances_by_tag
+)
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from utils import match_month, match_weekday, match_monthday
 dynamodb = boto3.resource("dynamodb")
 TABLE_NAME = os.environ.get("TABLE_NAME", "ec2-rds-scheduler-table")
 
+def is_period_date_active_today(period: dict, tz: str) -> bool:
+    """Xét điều kiện theo NGÀY (Months / Weekdays / MonthDays), bỏ qua Begin/EndTime."""
+    now = datetime.now(ZoneInfo(tz))
+
+    # Months
+    if period.get("Months"):
+        if not any(match_month(now, e.strip()) for e in period["Months"].split(",")):
+            return False
+
+    # MonthDays
+    if period.get("MonthDays"):
+        if not any(match_monthday(now, e.strip()) for e in period["MonthDays"].split(",")):
+            return False
+
+    # Weekdays
+    if period.get("Weekdays"):
+        if not any(match_weekday(now, e.strip()) for e in period["Weekdays"].split(",")):
+            return False
+
+    return True
+
+
 def lambda_handler(event, context):
-    # Lấy dữ liệu từ DynamoDB
     table = dynamodb.Table(TABLE_NAME)
     items = table.scan()["Items"]
 
-    # Lọc các periods và schedules
     periods = {i["Name"]: i for i in items if i["Type"] == "period"}
     schedules = [i for i in items if i["Type"] == "schedule"]
 
-    # Xử lý từng schedule
     for sched in schedules:
-        tz = sched.get("Timezone", "UTC")
+        tz = sched.get("Timezone", "UTC")  # lấy timezone từ DynamoDB
         period_names = [p.strip() for p in sched.get("Periods", "").split(",") if p.strip()]
-
-        # Kiểm tra nếu bất kỳ period nào active
         active = any(is_period_active(periods.get(p), tz) for p in period_names)
 
-        # Khởi tạo biến để lưu `end_time` muộn nhất
-        latest_end_time = None
+        end_times_today = []
+        for pname in period_names:
+            period = periods.get(pname)
+            if not period:
+                continue
+            if is_period_date_active_today(period, tz):
+                et = period.get("EndTime")
+                if et:
+                    end_times_today.append(et)
 
-        # Tìm `end_time` muộn nhất từ các period active
-        for period_name in period_names:
-            period = periods.get(period_name)
-            period_end_time = period.get("EndTime", None)
+        # Lấy latest_end_time (cái lớn nhất trong ngày hôm nay)
+        latest_end_time = max(end_times_today) if end_times_today else None
 
-            # So sánh để lấy `end_time` muộn nhất
-            if latest_end_time is None or (period_end_time and period_end_time > latest_end_time):
-                latest_end_time = period_end_time
-
-        # Lấy các flag từ DynamoDB
         enforced = sched.get("Enforced", True)
         hibernate = sched.get("Hibernate", False)
-        retain_running = sched.get("RetainRunning", False)
+        use_metric = sched.get("UseMetric", False)
         stop_new_instances = sched.get("StopNewInstances", True)  # Mặc định true
 
-        # Nếu enforced = true, enforce instance status
-        # Nếu enforced = true, enforce instance status
         if enforced:
-            # Sử dụng latest_end_time từ các period active
-            enforce_instance_status(sched["Name"], active, hibernate, retain_running)
-
-        if not enforced:
-            # Nếu không enforced thì xử lý bình thường
+            enforce_instance_status(sched["Name"], active, hibernate)
+        else:
             if stop_new_instances and latest_end_time:
-                stop_new_instances_by_tag(sched["Name"], hibernate, stop_new_instances, latest_end_time)
-            handle_instances_by_tag(sched["Name"], active, latest_end_time)
+                # Truyền latest_end_time cho stop_new
+                stop_new_instances_by_tag(
+                    sched["Name"], hibernate, stop_new_instances, latest_end_time, tz
+                )
+            handle_instances_by_tag(sched["Name"], active, hibernate, latest_end_time)
+
+        if use_metric:
+            collect_and_publish_all_metrics(schedules, period_names)
