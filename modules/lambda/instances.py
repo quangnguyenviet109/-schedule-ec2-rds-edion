@@ -34,30 +34,6 @@ def find_instances_by_tag(tag_value: str, resource_type: str):
         return ids
 
 
-def handle_instances_by_tag(tag_value: str, active: bool, hibernate: bool, end_time: str):
-    """Start/Stop EC2 dựa trên tag và trạng thái active"""
-    ec2_ids = find_instances_by_tag(tag_value, 'ec2')
-    if not ec2_ids:
-        return
-
-    end_time_dt = datetime.strptime(end_time, "%H:%M")
-
-    for instance_id in ec2_ids:
-        response = ec2.describe_instances(InstanceIds=[instance_id])
-        instance = response['Reservations'][0]['Instances'][0]
-        state = instance['State']['Name']
-        launch_time = instance['LaunchTime']
-
-        if active and state == 'stopped' and launch_time < end_time_dt:
-            ec2.start_instances(InstanceIds=[instance_id])
-
-        if not active and state == 'running' and launch_time > end_time_dt:
-            if hibernate:
-                ec2.stop_instances(InstanceIds=[instance_id], Hibernate=True)
-            else:
-                ec2.stop_instances(InstanceIds=[instance_id])
-
-
 def enforce_instance_status(tag_value: str, active: bool, hibernate: bool):
     """Enforce trạng thái EC2 theo schedule"""
     ec2_ids = find_instances_by_tag(tag_value, 'ec2')
@@ -79,45 +55,18 @@ def enforce_instance_status(tag_value: str, active: bool, hibernate: bool):
                 
                 ec2.stop_instances(InstanceIds=[instance_id])
 
-def stop_new_instances_by_tag(
-    tag_value: str,
-    hibernate: bool,
-    stop_new_instances: bool,
-    end_time: str,
-    timezone: str
-):
-    ec2_ids = find_instances_by_tag(tag_value, "ec2")
-    if not ec2_ids or not stop_new_instances or not end_time:
-        return
+    # ==== RDS ====
+    rds_ids = find_instances_by_tag(tag_value, 'rds')
+    if rds_ids:
+        for db_id in rds_ids:
+            db = rds.describe_db_instances(DBInstanceIdentifier=db_id)['DBInstances'][0]
+            status = db['DBInstanceStatus']  # 'available' | 'stopped' | ...
 
-    tz = ZoneInfo(timezone)
-    today_local = datetime.now(tz).date()
+            if active and status == 'stopped':
+                rds.start_db_instance(DBInstanceIdentifier=db_id)
 
-    try:
-        hh, mm = map(int, end_time.split(":"))
-        end_dt = datetime.combine(today_local, time(hh, mm), tzinfo=tz)
-    except Exception:
-        return
-
-    for instance_id in ec2_ids:
-        # Describe instance
-        response = ec2.describe_instances(InstanceIds=[instance_id])
-        instance = response["Reservations"][0]["Instances"][0]
-        state = instance["State"]["Name"]
-
-        # Lấy primary ENI id
-        primary_eni_id = instance["NetworkInterfaces"][0]["NetworkInterfaceId"]
-
-        # Lấy attach time từ ENI
-        eni = ec2.describe_network_interfaces(NetworkInterfaceIds=[primary_eni_id])["NetworkInterfaces"][0]
-        attach_time_local = eni["Attachment"]["AttachTime"].astimezone(tz)
-
-        # So sánh attach time với end_dt
-        if state == "running" and attach_time_local > end_dt:
-            if hibernate:
-                ec2.stop_instances(InstanceIds=[instance_id], Hibernate=True)
-            else:
-                ec2.stop_instances(InstanceIds=[instance_id])
+            elif not active and status == 'available':
+                rds.stop_db_instance(DBInstanceIdentifier=db_id)
 
 
 # ================================
