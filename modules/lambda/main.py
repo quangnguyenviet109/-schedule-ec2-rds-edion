@@ -19,14 +19,6 @@ TABLE_NAME = os.environ.get("TABLE_NAME", "ec2-rds-scheduler-table")
 
 
 def lambda_handler(event, context):
-    """
-    Lambda entrypoint.
-    - Đọc config từ DynamoDB
-    - Kiểm tra periods để xác định active/inactive cho từng schedule
-    - Thực hiện enforce trạng thái EC2/RDS
-    - Publish metrics nếu được bật
-    """
-
     # ===== Load table =====
     try:
         table = dynamodb.Table(TABLE_NAME)

@@ -19,4 +19,5 @@ module "dashboard" {
   source          = "./modules/cloudwatch"
   dashboard_name  = var.dashboard_name
   namespace       = var.namespace
+  period = var.period
 }

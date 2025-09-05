@@ -4,16 +4,16 @@ variable "table_name" {
 
 variable "config" {
   type = object({
-    name        = string
-    type        = string
-    description = string
-    periods     = string
-    timezone    = string
-    begin_time  = string
-    end_time    = string
-    months      = string
-    monthdays   = string
-    weekdays    = string
+    name        = optional(string)
+    type        = optional(string)
+    description = optional(string)
+    periods     = optional(string)
+    timezone    = optional(string)
+    begin_time  = optional(string)
+    end_time    = optional(string)
+    months      = optional(string)
+    monthdays   = optional(string)
+    weekdays    = optional(string)
 
     hibernate   = optional(bool)
     use_metrics = optional(bool)

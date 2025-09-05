@@ -4,7 +4,7 @@ resource "aws_cloudwatch_dashboard" "this" {
   dashboard_body = jsonencode({
     widgets = [
 
-      # 1️⃣ Tổng số EC2 managed
+      # 1️⃣ Total Managed EC2
       {
         "type": "metric",
         "x": 0, "y": 0, "width": 6, "height": 6,
@@ -14,11 +14,12 @@ resource "aws_cloudwatch_dashboard" "this" {
           ],
           "stat": "Maximum",
           "view": "singleValue",
-          "title": "Total Managed EC2"
+          "title": "Total Managed EC2",
+          "period": var.period
         }
       },
 
-      # 2️⃣ EC2 theo InstanceType - Pie chart
+      # 2️⃣ EC2 by InstanceType - Pie chart
       {
         "type": "metric",
         "x": 6, "y": 0, "width": 6, "height": 6,
@@ -28,11 +29,12 @@ resource "aws_cloudwatch_dashboard" "this" {
           ],
           "view": "pie",
           "stat": "Maximum",
-          "title": "EC2 Managed by Type"
+          "title": "EC2 Managed by Type",
+          "period": var.period
         }
       },
 
-      # 2️⃣ EC2 theo InstanceType - Line chart
+      # 2️⃣ EC2 by InstanceType - Line chart
       {
         "type": "metric",
         "x": 12, "y": 0, "width": 12, "height": 6,
@@ -42,11 +44,12 @@ resource "aws_cloudwatch_dashboard" "this" {
           ],
           "stat": "Maximum",
           "view": "timeSeries",
-          "title": "EC2 Managed Instances by Type"
+          "title": "EC2 Managed Instances by Type",
+          "period": var.period
         }
       },
 
-      # 3️⃣ RunningInstances theo InstanceType
+      # 3️⃣ RunningInstances by InstanceType
       {
         "type": "metric",
         "x": 0, "y": 6, "width": 12, "height": 6,
@@ -56,7 +59,8 @@ resource "aws_cloudwatch_dashboard" "this" {
           ],
           "stat": "Maximum",
           "view": "timeSeries",
-          "title": "Running EC2 by Type"
+          "title": "Running EC2 by Type",
+          "period": var.period
         }
       },
 
@@ -70,7 +74,8 @@ resource "aws_cloudwatch_dashboard" "this" {
           ],
           "stat": "Maximum",
           "view": "timeSeries",
-          "title": "Managed EC2 by Schedule"
+          "title": "Managed EC2 by Schedule",
+          "period": var.period
         }
       },
 
@@ -84,11 +89,12 @@ resource "aws_cloudwatch_dashboard" "this" {
           ],
           "stat": "Maximum",
           "view": "timeSeries",
-          "title": "Running EC2 by Schedule"
+          "title": "Running EC2 by Schedule",
+          "period": var.period
         }
       },
 
-      # 6️⃣ Tổng số RDS managed
+      # 6️⃣ Total Managed RDS
       {
         "type": "metric",
         "x": 12, "y": 12, "width": 6, "height": 6,
@@ -98,11 +104,12 @@ resource "aws_cloudwatch_dashboard" "this" {
           ],
           "stat": "Maximum",
           "view": "singleValue",
-          "title": "Total Managed RDS"
+          "title": "Total Managed RDS",
+          "period": var.period
         }
       },
 
-      # 7️⃣ Tổng giờ saved cho EC2
+      # 7️⃣ Total Saved Hours EC2
       {
         "type": "metric",
         "x": 18, "y": 12, "width": 6, "height": 6,
@@ -112,11 +119,12 @@ resource "aws_cloudwatch_dashboard" "this" {
           ],
           "stat": "Sum",
           "view": "singleValue",
-          "title": "Total Saved Hours EC2"
+          "title": "Total Saved Hours EC2",
+          "period": var.period
         }
       },
 
-      # 8️⃣ Giờ saved theo loại EC2 - Pie
+      # 8️⃣ Saved Hours EC2 by Type - Pie
       {
         "type": "metric",
         "x": 0, "y": 18, "width": 12, "height": 6,
@@ -126,11 +134,12 @@ resource "aws_cloudwatch_dashboard" "this" {
           ],
           "stat": "Sum",
           "view": "pie",
-          "title": "Saved Hours EC2 by Type"
+          "title": "Saved Hours EC2 by Type",
+          "period": var.period
         }
       },
 
-      # 9️⃣ Tổng giờ saved cho RDS
+      # 9️⃣ Total Saved Hours RDS
       {
         "type": "metric",
         "x": 12, "y": 18, "width": 6, "height": 6,
@@ -140,11 +149,12 @@ resource "aws_cloudwatch_dashboard" "this" {
           ],
           "stat": "Sum",
           "view": "singleValue",
-          "title": "Total Saved Hours RDS"
+          "title": "Total Saved Hours RDS",
+          "period": var.period
         }
       },
 
-      # 🔟 Giờ saved theo loại RDS - Pie
+      # 🔟 Saved Hours RDS by Type - Pie
       {
         "type": "metric",
         "x": 18, "y": 18, "width": 6, "height": 6,
@@ -154,11 +164,12 @@ resource "aws_cloudwatch_dashboard" "this" {
           ],
           "stat": "Sum",
           "view": "pie",
-          "title": "Saved Hours RDS by Type"
+          "title": "Saved Hours RDS by Type",
+          "period": var.period
         }
       },
 
-      # 1️⃣1️⃣ Managed RDS theo InstanceType - Pie
+      # 1️⃣1️⃣ Managed RDS by Type - Pie
       {
         "type": "metric",
         "x": 0, "y": 24, "width": 12, "height": 6,
@@ -168,7 +179,8 @@ resource "aws_cloudwatch_dashboard" "this" {
           ],
           "stat": "Maximum",
           "view": "pie",
-          "title": "Managed RDS by Type"
+          "title": "Managed RDS by Type",
+          "period": var.period
         }
       }
     ]

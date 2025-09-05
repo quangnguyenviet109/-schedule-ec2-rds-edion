@@ -22,7 +22,7 @@ resource "aws_dynamodb_table_item" "config_item" {
     Hibernate            = { S = var.config.hibernate }
     Periods              = { S = var.config.periods }
     Timezone             = { S = var.config.timezone }
-    UseMetrics           = { S = var.config.use_metrics }
+    UseMetric           = { S = var.config.use_metrics }
 
     # === Period Reference ===
     BeginTime   = { S = var.config.begin_time }

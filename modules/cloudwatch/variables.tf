@@ -10,3 +10,8 @@ variable "namespace" {
   default     = "EC2RDS/Scheduler"
 }
 
+variable "period" {
+  description = "CloudWatch metric period (seconds)"
+  type        = number
+  default     = 300
+}
