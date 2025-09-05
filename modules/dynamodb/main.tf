@@ -20,12 +20,7 @@ resource "aws_dynamodb_table_item" "config_item" {
     # === Schedule Reference ===
     Description          = { S = var.config.description }
     Hibernate            = { S = var.config.hibernate }
-    Enforced             = { S = var.config.enforced }
     Periods              = { S = var.config.periods }
-    RetainRunning        = { S = var.config.retain_running }
-    UseMaintenanceWindow = { S = var.config.use_maintenance_window }
-    SSMMaintenanceWindow = { S = var.config.ssm_maintenance_window }
-    StopNewInstances     = { S = var.config.stop_new_instances }
     Timezone             = { S = var.config.timezone }
     UseMetrics           = { S = var.config.use_metrics }
 

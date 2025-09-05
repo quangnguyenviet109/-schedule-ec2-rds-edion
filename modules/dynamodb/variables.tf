@@ -4,27 +4,18 @@ variable "table_name" {
 
 variable "config" {
   type = object({
-    # common
-    name = string
-    type = string   # "schedule" | "period"
+    name        = string
+    type        = string
+    description = string
+    periods     = string
+    timezone    = string
+    begin_time  = string
+    end_time    = string
+    months      = string
+    monthdays   = string
+    weekdays    = string
 
-    # schedule
-    description            = optional(string)
-    hibernate              = optional(string, "false")
-    enforced               = optional(string, "false")
-    periods                = optional(string)
-    retain_running         = optional(string, "false")
-    use_maintenance_window = optional(string, "false")
-    ssm_maintenance_window = optional(string)
-    stop_new_instances     = optional(string, "true")
-    timezone               = optional(string)
-    use_metrics            = optional(string)
-
-    # period
-    begin_time  = optional(string)
-    end_time    = optional(string)
-    months      = optional(string)
-    monthdays   = optional(string)
-    weekdays    = optional(string)
+    hibernate   = optional(bool)
+    use_metrics = optional(bool)
   })
 }

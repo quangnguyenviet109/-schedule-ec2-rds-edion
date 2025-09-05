@@ -1,7 +1,8 @@
 data "archive_file" "lambda_zip" {
   type        = "zip"
-  source_file = "${path.module}/main.py"
-  output_path = "${path.module}/deployment.zip"
+  source_dir  = "${path.module}/lambda"
+  output_path = "${path.module}/lambda/deployment.zip"
+  excludes    = ["deployment.zip", "*.tf"] 
 }
 
 resource "aws_lambda_function" "this" {

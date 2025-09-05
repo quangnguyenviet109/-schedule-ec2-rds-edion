@@ -5,19 +5,15 @@ from utils import match_month, match_monthday, match_weekday
 def is_period_active(period: dict, tz: str) -> bool:
     now = datetime.now(ZoneInfo(tz))
 
-    # Kiểm tra các tháng (Months)
     if period.get("Months") and not any(match_month(now, e.strip()) for e in period["Months"].split(",")):
         return False
 
-    # Kiểm tra các ngày trong tháng (MonthDays)
     if period.get("MonthDays") and not any(match_monthday(now, e.strip()) for e in period["MonthDays"].split(",")):
         return False
 
-    # Kiểm tra các ngày trong tuần (Weekdays)
     if period.get("Weekdays") and not any(match_weekday(now, e.strip()) for e in period["Weekdays"].split(",")):
         return False
 
-    # Kiểm tra thời gian (BeginTime và EndTime)
     begin_t = end_t = None
     if period.get("BeginTime"):
         bh, bm = map(int, period["BeginTime"].split(":"))

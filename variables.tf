@@ -12,27 +12,30 @@ variable "project_name" {
 
 variable "config" {
   type = object({
-    # common
-    name = string
-    type = string   # "schedule" | "period"
+    name        = string
+    type        = string
+    description = string
+    periods     = string
+    timezone    = string
+    begin_time  = string
+    end_time    = string
+    months      = string
+    monthdays   = string
+    weekdays    = string
 
-    # schedule
-    description            = optional(string)
-    hibernate              = optional(string)
-    enforced               = optional(string)
-    periods                = optional(string)
-    retain_running         = optional(string)
-    use_maintenance_window = optional(string)
-    ssm_maintenance_window = optional(string)
-    stop_new_instances     = optional(string)
-    timezone               = optional(string)
-    use_metrics            = optional(string)
-
-    # period
-    begin_time  = optional(string)
-    end_time    = optional(string)
-    months      = optional(string)
-    monthdays   = optional(string)
-    weekdays    = optional(string)
+    hibernate   = optional(bool)
+    use_metrics = optional(bool)
   })
+}
+
+variable "dashboard_name" {
+  description = "Name CloudWatch dashboard"
+  type        = string
+  default     = "EC2-RDS-Scheduler-Dashboard"
+}
+
+variable "namespace" {
+  description = "Namespace của metric"
+  type        = string
+  default     = "EC2RDS/Scheduler"
 }

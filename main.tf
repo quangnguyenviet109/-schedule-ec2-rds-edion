@@ -15,3 +15,8 @@ module "lambda" {
   role_arn     = module.iam_role.role_arn
   table_name   = module.dynamodb.table_name
 }
+module "dashboard" {
+  source          = "./modules/cloudwatch"
+  dashboard_name  = var.dashboard_name
+  namespace       = var.namespace
+}

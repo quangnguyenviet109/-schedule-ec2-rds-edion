@@ -18,11 +18,13 @@ resource "aws_iam_role_policy_attachment" "basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+# Policy custom cho Lambda scheduler
 resource "aws_iam_policy" "custom" {
   name = "${var.project_name}-policy"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+      # DynamoDB table access 
       {
         Effect = "Allow"
         Action = [
@@ -31,16 +33,32 @@ resource "aws_iam_policy" "custom" {
         ]
         Resource = var.table_arn
       },
+      # EC2 control
       {
         Effect = "Allow"
         Action = [
           "ec2:DescribeInstances",
           "ec2:StartInstances",
-          "ec2:StopInstances",
+          "ec2:StopInstances"
+        ]
+        Resource = "*"
+      },
+      # RDS control
+      {
+        Effect = "Allow"
+        Action = [
           "rds:DescribeDBInstances",
           "rds:StartDBInstance",
           "rds:StopDBInstance",
           "rds:ListTagsForResource"
+        ]
+        Resource = "*"
+      },
+      # CloudWatch metric publish
+      {
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:PutMetricData"
         ]
         Resource = "*"
       }
