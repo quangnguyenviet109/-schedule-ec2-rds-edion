@@ -1,16 +1,20 @@
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 from utils import match_month, match_monthday, match_weekday
+
 
 def is_period_active(period: dict, tz: str) -> bool:
     now = datetime.now(ZoneInfo(tz))
 
+    # Check Months
     if period.get("Months") and not any(match_month(now, e.strip()) for e in period["Months"].split(",")):
         return False
 
+    # Check MonthDays
     if period.get("MonthDays") and not any(match_monthday(now, e.strip()) for e in period["MonthDays"].split(",")):
         return False
 
+    # Check Weekdays
     if period.get("Weekdays") and not any(match_weekday(now, e.strip()) for e in period["Weekdays"].split(",")):
         return False
 
@@ -22,12 +26,26 @@ def is_period_active(period: dict, tz: str) -> bool:
         eh, em = map(int, period["EndTime"].split(":"))
         end_t = time(eh, em)
 
+
     if begin_t and end_t:
         if begin_t <= end_t:
+
             return begin_t <= now.time() < end_t
         else:
-            # Xử lý ca qua đêm
-            return now.time() >= begin_t or now.time() < end_t
+
+            if now.time() >= begin_t:
+
+                return True
+            elif now.time() < end_t:
+
+                yesterday = now - timedelta(days=1)
+                if period.get("Weekdays") and not any(match_weekday(yesterday, e.strip()) for e in period["Weekdays"].split(",")):
+                    return False
+                if period.get("Months") and not any(match_month(yesterday, e.strip()) for e in period["Months"].split(",")):
+                    return False
+                if period.get("MonthDays") and not any(match_monthday(yesterday, e.strip()) for e in period["MonthDays"].split(",")):
+                    return False
+                return True
 
     if begin_t and not end_t:
         return now.time() >= begin_t
